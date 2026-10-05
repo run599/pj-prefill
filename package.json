@@ -1,0 +1,35 @@
+{
+  "name": "dsh-pj-prefill",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH 破甲层 · prefill 攻击：在请求组装阶段往 messages 末尾注入 assistant 前缀，绕过模型的拒绝决策区（arXiv 2607.14147 / 2404.02151）。零依赖，只读本地文件，可热配置。",
+  "main": "plugin.mjs",
+  "exports": {
+    ".": "./plugin.mjs"
+  },
+  "files": [
+    "plugin.mjs",
+    "lib",
+    "config",
+    "docs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "selftest": "node tools/selftest.mjs",
+    "check": "node tools/selftest.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "cordis-plugin",
+    "prefill",
+    "jailbreak"
+  ],
+  "dsh": {
+    "kind": "plugin",
+    "entry": "plugin.mjs"
+  }
+}

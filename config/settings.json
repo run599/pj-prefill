@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "maxInjections": 0,
+  "onlyStep": 1,
+  "strategy": "group",
+  "keepOneInHistory": true,
+  "minUserChars": 4,
+  "groups": [
+    {
+      "name": "reverse",
+      "keywords": ["驱动", "逆向", "注入", "shellcode", "免杀", "反编译", "脱壳", "内核", "minifilter", "hook", "syscall", "patch"]
+    },
+    {
+      "name": "web",
+      "keywords": ["sql", "xss", "ssrf", "rce", "渗透", "payload", "越权", "jwt", "登录接口", "注入点"]
+    },
+    {
+      "name": "code",
+      "keywords": ["代码", "实现", "函数", "编译", "脚本", "写一个", "写一段", "重构", "修 bug"]
+    }
+  ]
+}
