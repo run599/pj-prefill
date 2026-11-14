@@ -1,18 +1,21 @@
 {
   "name": "dsh-pj-prefill",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
-  "description": "DSH 破甲层 · prefill 攻击：在请求组装阶段往 messages 末尾注入 assistant 前缀，绕过模型的拒绝决策区（arXiv 2607.14147 / 2404.02151）。零依赖，只读本地文件，可热配置。",
+  "description": "DSH 破甲层 · prefill 攻击：在请求组装阶段往 messages 末尾注入 assistant 前缀，绕过模型的拒绝决策区（arXiv 2607.14147 / 2404.02151）。自带三层开关（全局/按项目/按会话）+ 插件页卡片开关；运行期热读 switch.json，改完即生效。",
   "main": "plugin.mjs",
   "exports": {
-    ".": "./plugin.mjs"
+    ".": "./plugin.mjs",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "plugin.mjs",
     "lib",
     "config",
     "docs",
+    "tools",
     "README.md"
   ],
   "engines": {
@@ -30,6 +33,18 @@
   ],
   "dsh": {
     "kind": "plugin",
-    "entry": "plugin.mjs"
-  }
+    "entry": "plugin.mjs",
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ]
+    }
+  },
+  "comment": "v1.4.0 起改为**包名挂载**（profile package.json 的 dependencies + profiles/<profile>/node_modules junction + patch 写 name: dsh-pj-prefill）—— 因为客户端包按包名解析（plugins/<id>/client.js），file:// 挂载拿不到，界面上的开关就永远不会出现。dependencies 刻意留空：@deepseek-ai/dsh-typert-protocol 与 zod 由本包 node_modules 下的 junction 指向 C:\\Users\\时\\.dsh\\profiles\\node_modules 的同一份副本，无需联网安装；react 由浏览器侧客户端模块加载器提供。",
+  "dependencies": {}
 }

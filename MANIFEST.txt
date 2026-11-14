@@ -1,0 +1,47 @@
+pj-prefill 打包清单
+版本     : 1.4.0（package.json 声明；源码含 11-05 fail-closed 改造，属行为变更）
+打包时间 : 2026-11-14 15:33:33
+====================================================================================
+
+【包含】25 个文件 / 137.9 KB
+
+  .gitignore                           0.3 KB  e0c0e266926a2f398598aedaa18704b8b72e6cde0df176fc4c2a579671343259
+  config\prefill.txt                   2.1 KB  3b613301c939117c375917787bbdb14ef0761935a1651a381102ac90fdace22f
+  config\settings.json                 0.6 KB  a0e309d0b1e4941db0fc9810a270737db8f3580122813e994069d83eb2502193
+  docs\PRINCIPLE.md                    5.6 KB  9cce8d01c98f3a7010eedabf236015233a8e68248da94c4f8b7ee82cace49f89
+  docs\TROUBLESHOOTING.md              6.1 KB  969d9f971077c13e26ed006776bfa18be42f7a10e470c3d84766ac5f7612fcf7
+  lib\client.js                       19.1 KB  feb44d8fdefa3702de1495f6e50cb2329994b0e02f48a33edbde6eda8376083d
+  lib\config.mjs                       3.7 KB  e69b1ea7b38da0c3e40508d497ed36b9435818a2f38e667059ab765775c8dddb
+  lib\log.mjs                          0.5 KB  e7d6daae60c5e237159581eafe422ff7b0ec44b446d887ef14bf88239271e600
+  lib\paths.mjs                        1.4 KB  85298a5cd70c13223293619ad47d6a57eb767f2651534b1e6d459044cb794702
+  lib\pick.mjs                         7.2 KB  9dd50f29144e0e829af62658f556a4cf23c89d91bc14d9c1dcfd7733f9e86f3a
+  lib\remote.mjs                       6.6 KB  20058f89a68281fc28aadef69f21969817f5c11f2aef1465d494c82862066f91
+  lib\settle.mjs                      11.0 KB  ddf96a88df9a6bf42b4a305bdb7210c535572fc80e255bd6d21a7864656f50ba
+  lib\stats.mjs                        1.5 KB  97756cb447f9d1b004b1a2841039b0785591b769a9e6b3685655c7cdcc6e0219
+  lib\switch.mjs                      11.0 KB  b4f6326127f5867bf0af501685cbf26ccf2555858beef7ecb55795fe90ca3169
+  lib\texts.mjs                        4.0 KB  0d28200e7c35baa3a0c83285b50d532d4392cd7e8e4a243a886398ab24dbef87
+  package.json                         1.8 KB  5d6ecba2df69f014ca1cb0d58b76dcf96d809ac4530f763881a5cde80b46208d
+  plugin.mjs                          13.4 KB  24e24c70b0d5692f503604566d3386adacf1dc9bd8fb752f3b384fb7bcbe4add
+  prefill.txt                          0.1 KB  f289fb83346b46ac0caba366d8931b21f378ffcb51b024958e05e53d4e54a8bd
+  README.md                           11.1 KB  c187121321abe17daca1f77a4b031033ccdc394293080eee1d04e5fc0ffea92e
+  scripts\check.ps1                    4.4 KB  171a29a219dd3eea6a7c804b34186ad634b7a26378a6438f0e7ffff82eaff9b8
+  scripts\install.ps1                  4.6 KB  331f5981569e43a7c6dba93943fcb6fd9c4fc81eda5d40e3adada286aa67e675
+  scripts\make-entry.mjs               2.1 KB  a1290bbacd72a341a4d856d9bcf0ee76ac318b615beda3f2a2aa279331ecface
+  scripts\uninstall.ps1                3.1 KB  1dd10a540cbf798ec8619110c2e982e079d91947dc2adf2e9818052409963d85
+  tools\selftest.mjs                  10.9 KB  73eba767c3745a998bf8d770315f138ee533a384cb5f2bf4eb8d4ad9300e7b96
+  tools\switch.mjs                     5.8 KB  5e67754bddb7459abe4b977ac0ba00732f3d4c5b2e804877fb6bec5cbc792dad
+
+【排除】运行产物与历史备份，均未进包：
+  prefill.log (2.8 MB 运行日志) / state.json / switch.json / enabled
+  node_modules/ (内含指向 profiles\node_modules 的联结，不可移植)
+  plugin.v2..v6.mjs, index.mjs (历史版本) / *.bak-* (编辑前备份)
+
+【注意】
+  1. package.json 的 files 字段未列 scripts/ 与 prefill.txt；本包已手工包含。
+     若改用 npm pack，这两项会被漏掉 —— 需要的话请把它们补进 files。
+  2. 源码含 2026-11-05 fail-closed 改造：enabled 文件须严格为 "1" 才可能注入，
+     缺失/损坏/乱写一律视为关。同步更新了 tools/selftest.mjs 的对应断言。
+  3. 自检：node tools/selftest.mjs → 52/52 PASS。
+  4. 依赖 @deepseek-ai/dsh-typert-protocol 与 zod 由 profiles\node_modules 提供，
+     仓库无需 vendored。
+

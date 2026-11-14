@@ -116,9 +116,11 @@ DSH 会把注入的 prefill **落盘成 surface 事件**（`role: assistant`）�
 
 本插件在**请求层**把所有 `id` 以 `pj-prefill-` 开头的消息**全部剔掉**，再插一条新的：发给 API 的 messages 里永远只有一条 prefill，而真模型回答原样保留。
 
-### 2. 只用请求层，不碰 surface
+### 2. 请求注入 + 落盘改写
 
-注入点是 `agent/pre-step` 的 `decision.messages`（与 `@deepseek-ai/dsh-agent-instructions` 同一个手法）。落盘是 DSH 自己的行为，我们只保证**发出去的那一份**是干净的。
+注入点是 `agent/pre-step` 的 `decision.messages`（与 `@deepseek-ai/dsh-agent-instructions` 同一个手法），这是 DSH 唯一能把自定义消息送进模型的入口。
+
+落盘**不能放任 DSH 自己写**：loop 会把 pre-step 的每条消息无条件按 `user/message` 落盘，而读取时校验 `user/message` 的 `role` 必须是 `"user"` —— 我们那条 `role: assistant` 的前缀会让整份会话永久打不开。所以 `lib/settle.mjs` 在**本插件自己的落盘边界**（会话实例的 `append`）把它改写成形状合法的 `assistant/message` settlement：位置（用户消息之后、请求派生之前）与模型看到的内容都逐字不变，只是事件类型换了。
 
 ---
 
@@ -139,7 +141,7 @@ pwsh -File scripts\check.ps1
 - **不管 provider 侧审核**：prefill 只影响模型自身的生成。API 网关若有输出过滤，照样拦。
 - **敏感度是有上限的**：它是"改变走向"，不是"提升能力"。请求越极端，reasoning 越可能重新接管判定。
 - **多轮累积已在请求层解决，但 surface 里仍留有记录**（那是 DSH 的行为）。看着难受可以用 `maxInjections` 限制注入次数。
-- **`source.kind` 用的是 `model`**：与真实模型消息同族，避免自定义值被 schema 拒绝。如果 DSH 未来加严校验，这里要跟着改。
+- **`source` 由落盘层填成真实路由**：`message.source = { kind: 'model', provider, model }`，provider/model 取自 `agent/request` 解析出的真实配置（首个请求也能拿到）——`adoptSessionEvent` 要求 `assistant/message` 的 source 必须带非空 provider/model。
 - **换入口文件名才能热更新代码**：DSH 按 URL 缓存 ESM 模块，改 `plugin.mjs` 内容**不会**生效，得换文件名（或重启宿主）。这正是本项目用 `plugin.mjs` 而不是 `index.mjs` 的原因。
 
 ---
@@ -147,5 +149,43 @@ pwsh -File scripts\check.ps1
 ## 兼容性
 
 - 开发与实测环境：DSH 桌面版 `0.2.0-rc.2`（Electron，profile `desktop`），Node 24。
-- `agent/pre-step` 的 payload 形状：`{ agent, messages, step, signal }`，handler 返回 `{ ...decision, messages }`。
+- `agent/pre-step` 的 payload 形状：`{ agent, messages, turn, step, signal }`，handler 返回 `{ ...decision, messages }`。
+- 落盘层依赖两件事：`agent/request` 的 payload `{ agent, turn, step, signal }`（旁听 `next()` 拿真实 provider/model，不改返回值），以及 loop 用 `session.append('user/message', message, { surfaceOp: 'append' })` 落盘 pre-step 消息、且这次 append 发生在 `step/start` 与本步用户消息之后、`session.deriveMessages()` 之前。宿主换了这两处之一，`lib/settle.mjs` 要么失效（退回"这一步不注入"）要么需要跟着改；**它不会写出非法事件**（拿不到路由/位置或本地自检不过就放弃落盘）。
 - 不同内核版本若改了 pre-step 契约，`pick.mjs` 不受影响（纯函数），只需改 `plugin.mjs` 的取值与返回。
+
+---
+
+## 实测修正（2026-10-06，必读）
+
+**1. thinking 兼容是硬要求。** DeepSeek thinking 模式要求历史里的 assistant 消息把 thinking 块回传。注入的 prefill 若只有 text：第 1 轮它在请求末尾（prefill 语义，合法）；第 2 轮它成了历史消息 → API 400 `The content[].thinking in the thinking mode must be passed back to the API`。自 v1.1.0 起 `makePrefillMessage` 固定返回 `[reasoning, text]` 两段——DSH 的 `dsh-llm-deepseek` 会把内部 `reasoning` 映射成 API 的 `thinking`，且 `signature` 可选。**实测验证**：某会话 13 次注入 / 579 条 assistant 消息 / 2.5 小时，`thinking mode must be passed back` 命中 0 次。
+
+**2. keepOneInHistory 实测失效。** `agent/pre-step` 拿到的 `decision.messages` 只是**本步骤的增量消息、不含历史**（日志证据 `{"ev":"inject","seq":2,"stripped":0,"roles":"user","msgCount":"1->2"}`），所以搜不到已落盘的旧 prefill，`stripped` 恒为 0。**控堆积请用 `maxInjections`**（设 1 = 只注入第一轮）。
+
+**3. 注入会落盘，而落盘形态会决定会话能不能再打开（v1.2.0 的事故与修法）。**
+v1.2.0 之前，被注入的消息在日志里长这样：
+
+```json
+{"type":"user/message","data":{"role":"assistant"},"surfaceOp":"append"}
+```
+
+DSH 0.2.0 读取时会做角色映射校验（`dsh-session` 的 `assertMessageEventShape`：`user/message` 的 role 必须是 `"user"`），于是**整份会话在下次加载时永久失败**：
+
+```
+stored session "session-…" is corrupt: stored session "session-…" failed validation:
+Error: session event at seq 15489 message must have role "user"
+```
+
+一条坏事件能废掉 15000+ 事件的整份日志。v1.2.0 起由 `lib/settle.mjs` 在落盘边界把它改写成：
+
+```json
+{"type":"assistant/message","data":{"turn":172,"step":1,
+ "message":{"id":"pj-prefill-…","role":"assistant","content":[…],
+            "source":{"kind":"model","provider":"deepseek-official","model":"deepseek-v4-flash"}},
+ "stream":[]},"surfaceOp":"append"}
+```
+
+为什么可以等价改写：`deriveEventMessage` 对 `user/message` 直接返回 `data`、对 `assistant/message` 返回 `data.message`，两条分支产出的都是同一条 assistant 消息，所以 `deriveMessages()` 的结果逐字相同 → 攻击效果与落盘位置一概不变。**验收方式**：从 `app.asar` 里抽出真实的 `adoptSessionEvent`，对修复后的全量 15640 条事件跑一遍（0 失败）。
+
+（顺带记下第 1 条 why：注入必须带 `reasoning` 块也是这个原因的另一面 —— 它会作为历史 assistant 消息回传给 API。）
+
+**4. 改代码要换入口（否则不生效）。** DSH 按 URL 缓存 ESM 模块。用 `node scripts/make-entry.mjs 1.2.0 v3` 生成 `plugin.v3.mjs`（lib 的 import 全带 `?v=v3`），再把 preset 挂载行指过去。

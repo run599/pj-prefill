@@ -1,0 +1,11 @@
+# ── 运行产物：绝不入库 ──────────────────────────────
+node_modules/
+prefill.log
+state.json
+switch.json
+enabled
+
+# ── 旧版本 / 备份文件 ───────────────────────────────
+plugin.v*.mjs
+index.mjs
+*.bak-*
